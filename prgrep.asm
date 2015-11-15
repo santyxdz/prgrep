@@ -76,8 +76,6 @@ _start: ;like main()
         mov [pname],rsi ;saving name of program
         pop    rsi              ; the pointer to the string
         mov [argv],rsi          ;saving pointer
-        mov rax,[zero]
-        cmp [argc],rax ; argc==0?
         ;rax=strlen(argv)
         ;mov rdi,[argv]
         ;call strlen
