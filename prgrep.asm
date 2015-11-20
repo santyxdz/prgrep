@@ -9,10 +9,16 @@ global main
 ;--------------------------------------------------------------------; 
 ; Compile & Usage:
 ; nasm -f elf64 prgrep.asm
-; ld prgrep.o --output=prgrep
+; gcc prgrep.o --output=prgrep (ld is supported but it can fail PD:uncomment 2nd line)
 ; chmod +x prgrep
 ; ./prgrep
 ;--------------------------------------------------------------------;
+; Developed by:
+; Santiago Montoya Angarita
+; Juan Daniel Arboleda Sanchez
+; Andres Mateo Otalvaro Bermudez
+;--------------------------------------------------------------------;
+
 
 ;================================MACROS=======================================;
 %macro print 2
@@ -52,6 +58,10 @@ global main
 %endmacro
 %define sizeof(x) x %+ _size ;use to STAT struc
 ;===========================END==MACROS=======================================;
+
+;STAT struc, use to call sys_stat and save the information in
+; stat (.bss variable) instance, and then extract st_size
+; that's the size (in bytes) of a file.
 struc STAT
     .st_dev         resq 1
     .st_ino         resq 1
@@ -76,7 +86,7 @@ endstruc
 ; parameters
 ;    for int and &points rdi,rsi,rdx,rcx,r8,r9
 ;    for float and doubles xmm[0-7]
-;    for aditional on the stack and removed by the caller
+;    for additional on the stack and removed by the caller
 ;    when called function gets control ret_add is [rsp] and
 ;    1st memory paramaters is at [rsp+8]
 ;call-save reg rbp, rbx, r12, r13, r14, r15
@@ -96,7 +106,7 @@ section .text
             push    rbp      ;backup                               
             mov     rbp, rsp                                
             mov     qword [rbp-8H], rdi ;fist number                    
-            mov     qword [rbp-10H], rsi ;secound number                   
+            mov     qword [rbp-10H], rsi ;second number                   
             mov     rax, qword [rbp-8H] ; mov 1st to rax                    
             cmp     rax, qword [rbp-10H] ; compare with the 2nd one                   
             jle     max_001   ; si es <=                                
@@ -105,7 +115,7 @@ section .text
 
     max_001:  mov     rax, qword [rbp-10H]  ; el 2nd es es max                  
     max_002:  pop     rbp  ;restore backup                                   
-            ret            ;end sub-rutina                                 
+            ret            ;end sub-routine                                 
     ; max End of function
 
     ;=========MIN========
@@ -166,12 +176,14 @@ section .text
         pop r15
         pop rbp
         ret
+
+    ;============PRINTLINE==========
     ; printline(rdi:int)
     printline:; Function begin
             push    rbp ;backup
             push    r12 ;backup                                    
             mov     rbp, rsp 
-            mov     r12,rdi ;Line numeber at 
+            mov     r12,rdi ;Line number at 
             mov     rdi,found_in ;fount string
             call    puts       ;print                       
             movq    rdi, xmm8 ;name actual file
@@ -180,7 +192,7 @@ section .text
             call    puts ;print
             mov     rdi,nl   ;string new line                           
             call    puts ;print
-            pop     r12    ;restore bckup                              
+            pop     r12    ;restore backup                              
             pop     rbp    ;restore backup                                 
             ret                                             
     ; printline End of function
@@ -245,6 +257,8 @@ section .text
             pop     rbp                                     
             ret                                             
     ; compare End of function
+
+    ;========TOLOWERCASE====;
     ; tolowercase(char*)
     tolowercase:; Function begin
             push    rbp                                     
@@ -284,6 +298,8 @@ section .text
             pop     rbp                                     
             ret            
     ; tolowercase End of function
+
+    ;===========BadChar Table D1===========
     ; badCharHeuristic(rdi:char*,rdi:int,rdx:int[])
     badCharHeuristic:; Function begin
             push    rbp                                     
@@ -325,6 +341,7 @@ section .text
             ret                                             
     ; badCharHeuristic End of function
 
+    ;===========Boyer-Moor Implementarion ========;
     ; search(rdi:char*,rsi:char*) ;txt,pattern
     search: ; Function begin
             push    rbp                                     
@@ -374,7 +391,7 @@ section .text
             mov     rdx, qword [rbp-60H]                    
             mov     rcx, qword [rbp-48H]                    
             mov     rax, qword [rbp-70H]                    
-            mov     rsi, rcx ;siz                               
+            mov     rsi, rcx ;size                               
             mov     rdi, rax                                
             call    badCharHeuristic                        
             mov     qword [rbp-38H], 0                      
@@ -505,11 +522,35 @@ section .text
             call compare
             cmp rax,0
             je ignorecase_section
+            mov rsi,[r12+8]
+            mov rdi,ignorecaselong
+            call compare
+            cmp rax,0
+            je ignorecase_section
             jmp without_options
         regexp_section:
-            mov rdi,regexp
-            call puts
-            jmp end
+            mov r15,2 ;pattern in 2nd place
+            loop_regexp:
+            movq xmm8,[r12+r14*8+8]; Char* file used
+            openfile [r12+r14*8+8]
+            movq xmm0,rax
+            cmp rax,0
+            jl end
+            bytesof [r12+r14*8+8]
+            movq xmm1,rax
+            mov rsi,buffer
+            movq rdi,xmm0
+            movq rdx,xmm1
+            mov rax,0 ;sys_read
+            syscall
+            mov rdi,buffer
+            mov rsi,[r12+r15*8]
+            call search
+            inc r14
+            mov rdi,r14
+            cmp rdi,r13
+            je end
+            jmp loop_regexp
         fileparam_section:
             mov rdi,fileparam
             call puts
@@ -595,18 +636,19 @@ section .rodata
     line_at db ": ",0x0
     NO_OF_CHARS dq 256 ;nums of chars in ascii standard
     not_found db "No hay nada para buscar",0xA,0x0;10,13 | o12,o15 means \n\r
-    usage: db 0x9,"./prgrep [option] <PATTERN> [File...]",0xA
-           db 0x9,"./prgrep [option] [-f File] [Files...]",0xA
-           db 0x9,"even when there are some optional arguments if any of them it's not found perhaps it can fail. ",0xA,
-           db 0x9,"Options:",0xA
+    usage: db 0x9,"./prgrep [option] <PATTERN> [FILE...]",0xA
+           db 0x9,"even when there are some optional arguments if",0xA
+           db 0x9,"any of them it's not found perhaps it can fail. ",0xA,
+           db 0x9,"options:",0xA
            db 0x9,"-e <PATTERN>",0xA
-           db 0x9,"-f <File>",0xA
+           db 0x9,"-f <FILE>",0xA
            db 0x9,"-i or --ignore-case",0xA
            db 0x0
     nl db "",0xA,0x0 ; \n
     regexp db "-e",0x0
     fileparam db "-f",0x0
     ignorecase db "-i",0x0
+    ignorecaselong db "--ignore-case",0x0
     zero dd 0 ; Int->4Bytes->Double Word
 section .bss ;varibles no inicializadas
     ; <name_var> <size> <how_many>
