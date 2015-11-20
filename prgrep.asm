@@ -43,6 +43,13 @@ global main
     syscall
     mov rax,[stat + STAT.st_size] ; get st_size
 %endmacro
+%macro openfile 1
+    mov rax,2
+    mov rdi,%1
+    mov rsi,0 ;READONLY/RDONLY
+    mov rdx,0 ;If a file if created is RO
+    syscall
+%endmacro
 %define sizeof(x) x %+ _size
 ;===========================END==MACROS=======================================;
 struc STAT
@@ -165,7 +172,7 @@ section .text
     println_int:; Function begin
             push    rbp                                     
             mov     rbp, rsp                                
-            mov     edi, found                              
+            mov     rdi, found                              
             call    puts                                    
             nop                                             
             pop     rbp                                     
@@ -436,7 +443,7 @@ section .text
             je usage_message ; Mal uso
             mov r13,rdi ; argc in r13
             mov r12,rsi ; argv in r12 +0=pname +8=argv[1] +16=argv[2]
-            mov r14,1
+            mov r14,2
             ;=========ARGUMENTS DONE========;
             mov rsi,[r12+8] ;Fist Argument
             mov rdi,regexp ; if == -e
@@ -474,24 +481,19 @@ section .text
             ; mov rdi,[r12+16]
             ; call puts
         without_options:
-            ; mov rdi,found
-            ; call puts
-            ; mov rdi,[r12+r14*8]
-            ; call puts
-            ; mov rax,2
-            ; mov rdi,[r12+r14*8]
-            ; mov rsi,0 ;READONLY/RDONLY
-            ; mov rdx,0 ;If a file if created is RO
-            ; syscall
-            ; mov [filedescriptor],rax
-            ; mov rax,4
-            ; mov rdi,[filedescriptor]
-            ; mov rsi,stat
-            ; syscall
-            ; return [stat+STAT.st_size]
-            bytesof [r12+16]
-            mov rsi,rax
-            return rsi
+            openfile [r12+r14*8]
+            movq mm0,rax
+            bytesof [r12+r14*8]
+            movq mm1,rax
+            mov rsi,buffer
+            movq rdi,mm0
+            movq rdx,mm1
+            mov rax,0
+            syscall
+            mov rdi,buffer
+            mov rsi,[r12+8]
+            call search
+            
 
 
     ;return argc the direction
@@ -544,3 +546,4 @@ section .bss ;varibles no inicializadas
     numlines resb 1; For lines
     temp resd 1;
     stat resb 144
+    buffer times 104857600 resb 1
