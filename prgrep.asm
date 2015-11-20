@@ -50,7 +50,7 @@ global main
     mov rdx,0 ;If a file if created is RO
     syscall
 %endmacro
-%define sizeof(x) x %+ _size
+%define sizeof(x) x %+ _size ;use to STAT struc
 ;===========================END==MACROS=======================================;
 struc STAT
     .st_dev         resq 1
@@ -72,7 +72,6 @@ struc STAT
     .st_ctime_nsec  resq 1
 endstruc
 
-section .text
 ;Procedimientos : Como una funcion
 ; parameters
 ;    for int and &points rdi,rsi,rdx,rcx,r8,r9
@@ -94,51 +93,50 @@ section .text
     ;Funcionamiento
     ;rax:int max(rdi:int,rsi:int)
     max:; Function begin
-            push    rbp                                     
+            push    rbp      ;backup                               
             mov     rbp, rsp                                
-            mov     qword [rbp-8H], rdi                     
-            mov     qword [rbp-10H], rsi                    
-            mov     rax, qword [rbp-8H]                     
-            cmp     rax, qword [rbp-10H]                    
-            jle     max_001                                   
-            mov     rax, qword [rbp-8H]                     
-            jmp     max_002                                   
+            mov     qword [rbp-8H], rdi ;fist number                    
+            mov     qword [rbp-10H], rsi ;secound number                   
+            mov     rax, qword [rbp-8H] ; mov 1st to rax                    
+            cmp     rax, qword [rbp-10H] ; compare with the 2nd one                   
+            jle     max_001   ; si es <=                                
+            mov     rax, qword [rbp-8H]  ;si no es el primero                  
+            jmp     max_002            ;finaliza                       
 
-    max_001:  mov     rax, qword [rbp-10H]                    
-    max_002:  pop     rbp                                     
-            ret                                             
+    max_001:  mov     rax, qword [rbp-10H]  ; el 2nd es es max                  
+    max_002:  pop     rbp  ;restore backup                                   
+            ret            ;end sub-rutina                                 
     ; max End of function
 
     ;=========MIN========
     ;Funcionamiento
     ;rax:int min_int(rdi:int,rsi:int)
     min:    ; Function begin
-            push    rbp                                     
+            push    rbp      ;backup                               
             mov     rbp, rsp                                
-            mov     qword [rbp-8H], rdi                     
-            mov     qword [rbp-10H], rsi                    
-            mov     rax, qword [rbp-8H]                     
-            cmp     rax, qword [rbp-10H]                    
-            jl      min_003                                   
-            mov     rax, qword [rbp-8H]                     
-            jmp     min_004                                   
+            mov     qword [rbp-8H], rdi ; 1st num                    
+            mov     qword [rbp-10H], rsi   ; 2nd num                 
+            mov     rax, qword [rbp-8H]    ; 1st to eax              
+            cmp     rax, qword [rbp-10H]  ;compare 1st with 2nd                  
+            jl      min_003  ;si es <                                 
+            mov     rax, qword [rbp-8H]   ;si no el 1st                  
+            jmp     min_004          ;fin                         
 
-    min_003:  mov     rax, qword [rbp-10H]                    
-    min_004:  pop     rbp                                     
-            ret                                             
+    min_003:  mov     rax, qword [rbp-10H]  ; el 2nd                  
+    min_004:  pop     rbp     ;restore backup                                
+            ret           ;end sub-rutina                                  
     ; min End of function
 
     ;=========STRLEN========
     ;Funcionamiento
     ;rax:int strlen(rdi:char*)
     strlen: ; Function begin
-            push    rbp                                     
+            push    rbp        ;backup                             
             mov     rbp, rsp                                
-            mov     qword [rbp-18H], rdi                    
-            mov     qword [rbp-8H], 0                       
-            jmp     strlen_004                                   
-
-    strlen_003:  add     qword [rbp-8H], 1                       
+            mov     qword [rbp-18H], rdi  ;1st argument                  
+            mov     qword [rbp-8H], 0    ;counter i                  
+            jmp     strlen_004        ;go while                           
+    strlen_003:  add     qword [rbp-8H], 1   ;i=i+1                    
     strlen_004:  mov     rdx, qword [rbp-8H]                     
             mov     rax, qword [rbp-18H]                    
             add     rax, rdx                                
@@ -146,8 +144,8 @@ section .text
             test    al, al                                  
             jnz     strlen_003                                   
             mov     rax, qword [rbp-8H]                     
-            pop     rbp                                     
-            ret                                             
+            pop     rbp     ;restore backup                                
+            ret     ;end sub-routine                                        
     ; strlen End of function
 
     ;=========PUTS========
@@ -168,24 +166,24 @@ section .text
         pop r15
         pop rbp
         ret
-    ; println_int(rdi:int)
-    println_int:; Function begin
-            push    rbp
-            push    r12                                     
+    ; printline(rdi:int)
+    printline:; Function begin
+            push    rbp ;backup
+            push    r12 ;backup                                    
             mov     rbp, rsp 
-            mov     r12,rdi
-            mov     rdi,found_in
-            call    puts                              
-            movq    rdi, xmm8
-            call    puts
-            mov     rdi,line_at
-            call    puts
-            mov     rdi,nl                              
-            call    puts
-            pop     r12                                  
-            pop     rbp                                     
+            mov     r12,rdi ;Line numeber at 
+            mov     rdi,found_in ;fount string
+            call    puts       ;print                       
+            movq    rdi, xmm8 ;name actual file
+            call    puts ;print
+            mov     rdi,line_at ; string ": "
+            call    puts ;print
+            mov     rdi,nl   ;string new line                           
+            call    puts ;print
+            pop     r12    ;restore bckup                              
+            pop     rbp    ;restore backup                                 
             ret                                             
-    ; println_int End of function
+    ; printline End of function
 
     ;=========COMPARE========
     ;Funcionamiento
@@ -199,16 +197,16 @@ section .text
             mov     qword [rbp-28H], rsi                    
             mov     rax, qword [rbp-28H]                    
             mov     rdi, rax                                
-            call    strlen                                  
+            call    strlen   ;length of 1st string                               
             mov     rbx, rax                                
             mov     rax, qword [rbp-20H]                    
             mov     rdi, rax                                
-            call    strlen                                  
-            mov     rsi, rbx                                
+            call    strlen    ;length of 2nd string                               
+            mov     rsi, rbx  ;1st                              
             mov     rdi, rax                                
-            call    min                                     
-            mov     qword [rbp-18H], rax                    
-            mov     qword [rbp-10H], 0                      
+            call    min      ;get the min length                              
+            mov     qword [rbp-18H], rax  ;minumun=min                
+            mov     qword [rbp-10H], 0    ;i=0;                  
             mov     qword [rbp-10H], 0                      
             jmp     compare_007                                   
 
@@ -222,11 +220,11 @@ section .text
             movzx   eax, byte [rax]                         
             cmp     dl, al                                  
             jz      compare_006                                   
-            mov     rdx, qword [rbp-10H]                    
-            mov     rax, qword [rbp-20H]                    
-            add     rax, rdx                                
-            movzx   eax, byte [rax]                         
-            movsx   edx, al                                 
+            mov     rdx, qword [rbp-10H]  ;for(i=0l;i<minimun;i++){                  
+            mov     rax, qword [rbp-20H]  ;       if(pat1[i]==pat2[i]){}else{           
+            add     rax, rdx              ;            return (pat1[i]-pat2[i]);      
+            movzx   eax, byte [rax]       ;    }              
+            movsx   edx, al               ; }                 
             mov     rcx, qword [rbp-10H]                    
             mov     rax, qword [rbp-28H]                    
             add     rax, rcx                                
@@ -237,7 +235,7 @@ section .text
             cdqe        ;Double to Quad                                    
             jmp     compare_008                                   
 
-    compare_006:  add     qword [rbp-10H], 1                      
+    compare_006:  add     qword [rbp-10H], 1  ; i++                    
     compare_007:  mov     rax, qword [rbp-10H]                    
             cmp     rax, qword [rbp-18H]                    
             jl      compare_005                                   
@@ -247,13 +245,51 @@ section .text
             pop     rbp                                     
             ret                                             
     ; compare End of function
-
+    ; tolowercase(char*)
+    tolowercase:; Function begin
+            push    rbp                                     
+            mov     rbp, rsp                                
+            mov     qword [rbp-18H], rdi                    
+            mov     qword [rbp-8H], 0                       
+            jmp     tolowercase_003                                   
+    tolowercase_001:  mov     rdx, qword [rbp-8H]   
+            mov     rax, qword [rbp-18H]                    
+            add     rax, rdx                                
+            movzx   eax, byte [rax]                         
+            cmp     al, 64                                  
+            jle     tolowercase_002                                   
+            mov     rdx, qword [rbp-8H]                     
+            mov     rax, qword [rbp-18H]                    
+            add     rax, rdx                                
+            movzx   eax, byte [rax]                         
+            cmp     al, 90                                  
+            jg      tolowercase_002                    
+            mov     rdx, qword [rbp-8H]                     
+            mov     rax, qword [rbp-18H]                    
+            add     rax, rdx                                
+            mov     rcx, qword [rbp-8H]                     
+            mov     rdx, qword [rbp-18H]                    
+            add     rdx, rcx                                
+            movzx   edx, byte [rdx]                         
+            add     edx, 32                                 
+            mov     byte [rax], dl                          
+    tolowercase_002:  add     qword [rbp-8H], 1                       
+    tolowercase_003:  mov     rdx, qword [rbp-8H]                     
+            mov     rax, qword [rbp-18H]                    
+            add     rax, rdx                                
+            movzx   eax, byte [rax]                         
+            test    al, al                                  
+            jnz     tolowercase_001                                   
+            nop                                             
+            pop     rbp                                     
+            ret            
+    ; tolowercase End of function
     ; badCharHeuristic(rdi:char*,rdi:int,rdx:int[])
     badCharHeuristic:; Function begin
             push    rbp                                     
             mov     rbp, rsp                                
-            mov     qword [rbp-18H], rdi                    
-            mov     qword [rbp-20H], rsi                    
+            mov     qword [rbp-18H], rdi ;char *str                   
+            mov     qword [rbp-20H], rsi ;size                  
             mov     qword [rbp-28H], rdx                    
             mov     qword [rbp-8H], 0                       
             jmp     badCharHeuristic_006                                   
@@ -299,18 +335,18 @@ section .text
             push    r12                                     
             push    rbx                                     
             sub     rsp, 72                                 
-            mov     qword [rbp-68H], rdi                    
-            mov     qword [rbp-70H], rsi                    
+            mov     qword [rbp-68H], rdi  ;char *txt                  
+            mov     qword [rbp-70H], rsi  ;char *pat                  
             mov     rax, rsp                                
             mov     rbx, rax                                
             mov     rax, qword [rbp-70H]                    
             mov     rdi, rax                                
             call    strlen                                  
-            mov     qword [rbp-48H], rax                    
+            mov     qword [rbp-48H], rax  ; m (sizeof pat)                  
             mov     rax, qword [rbp-68H]                    
             mov     rdi, rax                                
             call    strlen                                  
-            mov     qword [rbp-50H], rax                    
+            mov     qword [rbp-50H], rax   ;n (sizeof txt)                 
             mov     rax, qword [rel NO_OF_CHARS]            
             lea     rdx, [rax-1H]                           
             mov     qword [rbp-58H], rdx                    
@@ -338,7 +374,7 @@ section .text
             mov     rdx, qword [rbp-60H]                    
             mov     rcx, qword [rbp-48H]                    
             mov     rax, qword [rbp-70H]                    
-            mov     rsi, rcx                                
+            mov     rsi, rcx ;siz                               
             mov     rdi, rax                                
             call    badCharHeuristic                        
             mov     qword [rbp-38H], 0                      
@@ -368,7 +404,7 @@ section .text
     search_012:  cmp     qword [rbp-40H], 0                      
             jns     search_015                                   
             mov     eax, 0                                  
-            call    println_int                             
+            call    printline                             
             mov     rdx, qword [rbp-38H]                    
             mov     rax, qword [rbp-48H]                    
             add     rax, rdx                                
@@ -433,7 +469,7 @@ section .text
         push r12 ;use as argv
         push r13 ;use as argc
         push r14 ; +argv
-        push r15
+        push r15 ; desplazamiento parametros
         cmp rdi,1 ; Sin argumentos
         je not_args_found
         jg args_found
@@ -479,28 +515,44 @@ section .text
             call puts
             jmp end
         ignorecase_section:
-            mov rdi,ignorecase
-            call puts
-            jmp end
-            ; mov rsi,[r12+8] ;PATRON 2DO ARGUMENTO
-            ; mov rdi,[r12+16] ;TEXTO 1ER ARGUMENTO
-            ; call search
-            ; mov rdi,[r12+8]
-            ; call puts
-            ; mov rdi,[r12+16]
-            ; call puts
+            mov r15,2 ;pattern in 2nd place
+            loop_ignorecase:
+            movq xmm8,[r12+r14*8+8]; Char* file used
+            openfile [r12+r14*8+8]
+            movq xmm0,rax
+            cmp rax,0
+            jl end
+            bytesof [r12+r14*8+8]
+            movq xmm1,rax
+            mov rsi,buffer
+            movq rdi,xmm0
+            movq rdx,xmm1
+            mov rax,0 ;sys_read
+            syscall
+            mov rdi,buffer
+            call tolowercase
+            mov rdi,[r12+r15*8]
+            call tolowercase
+            mov rdi,buffer
+            mov rsi,[r12+r15*8]
+            call search
+            inc r14
+            mov rdi,r14
+            cmp rdi,r13
+            je end
+            jmp loop_ignorecase
         without_options:
             ;dec r13
             loop_without:
-            movq xmm8,[r12+r14*8]
+            movq xmm8,[r12+r14*8] ;Char* file used
             openfile [r12+r14*8]
-            movq mm0,rax
+            movq xmm0,rax
             bytesof [r12+r14*8]
-            movq mm1,rax
+            movq xmm1,rax
             mov rsi,buffer
-            movq rdi,mm0
-            movq rdx,mm1
-            mov rax,0
+            movq rdi,xmm0
+            movq rdx,xmm1
+            mov rax,0 ;sys_read
             syscall
             mov rdi,buffer
             mov rsi,[r12+r15*8]
@@ -561,5 +613,5 @@ section .bss ;varibles no inicializadas
     idarchivo resd 1 ; Archivo
     numlines resb 1; For lines
     temp resd 1;
-    stat resb 144
-    buffer times 104857600 resb 1
+    stat resb 144 ;for struc
+    buffer times 104857600 resb 1 ;100Mib
