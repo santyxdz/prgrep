@@ -170,11 +170,19 @@ section .text
         ret
     ; println_int(rdi:int)
     println_int:; Function begin
-            push    rbp                                     
-            mov     rbp, rsp                                
-            mov     rdi, found                              
-            call    puts                                    
-            nop                                             
+            push    rbp
+            push    r12                                     
+            mov     rbp, rsp 
+            mov     r12,rdi
+            mov     rdi,found_in
+            call    puts                              
+            movq    rdi, xmm8
+            call    puts
+            mov     rdi,line_at
+            call    puts
+            mov     rdi,nl                              
+            call    puts
+            pop     r12                                  
             pop     rbp                                     
             ret                                             
     ; println_int End of function
@@ -226,7 +234,7 @@ section .text
             movsx   eax, al                                 
             sub     edx, eax                                
             mov     eax, edx                                
-            cdqe                                            
+            cdqe        ;Double to Quad                                    
             jmp     compare_008                                   
 
     compare_006:  add     qword [rbp-10H], 1                      
@@ -312,7 +320,7 @@ section .text
             mov     rdx, rax                                
             mov     r12, rdx                                
             mov     r13d, 0                                 
-            shl     rax, 3                                  
+            shl     rax, 3     ;shift logical left unsigned                            
             lea     rdx, [rax+7H]                           
             mov     eax, 16                                 
             sub     rax, 1                                  
@@ -324,8 +332,8 @@ section .text
             sub     rsp, rax                                
             mov     rax, rsp                                
             add     rax, 7                                  
-            shr     rax, 3                                  
-            shl     rax, 3                                  
+            shr     rax, 3     ;shift logical right unsigned                         
+            shl     rax, 3      ;shift logical left unsigned                             
             mov     qword [rbp-60H], rax                    
             mov     rdx, qword [rbp-60H]                    
             mov     rcx, qword [rbp-48H]                    
@@ -443,7 +451,8 @@ section .text
             je usage_message ; Mal uso
             mov r13,rdi ; argc in r13
             mov r12,rsi ; argv in r12 +0=pname +8=argv[1] +16=argv[2]
-            mov r14,2
+            mov r14,2 ; Actual argument
+            mov r15,1 ; Where's the pattern
             ;=========ARGUMENTS DONE========;
             mov rsi,[r12+8] ;Fist Argument
             mov rdi,regexp ; if == -e
@@ -481,6 +490,9 @@ section .text
             ; mov rdi,[r12+16]
             ; call puts
         without_options:
+            ;dec r13
+            loop_without:
+            movq xmm8,[r12+r14*8]
             openfile [r12+r14*8]
             movq mm0,rax
             bytesof [r12+r14*8]
@@ -491,11 +503,13 @@ section .text
             mov rax,0
             syscall
             mov rdi,buffer
-            mov rsi,[r12+8]
+            mov rsi,[r12+r15*8]
             call search
-            
-
-
+            inc r14
+            mov rdi,r14
+            cmp rdi,r13 ;Test is like CMP but doesn't change
+            je end ; if cont<argc -> end
+            jmp loop_without
     ;return argc the direction
     ;return [argc] ;content of the direction
         end:
@@ -525,6 +539,8 @@ section .data ;variables inicializadas
     hellofile db "./hello.txt"
 section .rodata
     found db "found",0xA,0x0
+    found_in db "found in ",0x0
+    line_at db ": ",0x0
     NO_OF_CHARS dq 256 ;nums of chars in ascii standard
     not_found db "No hay nada para buscar",0xA,0x0;10,13 | o12,o15 means \n\r
     usage: db 0x9,"./prgrep [option] <PATTERN> [File...]",0xA
