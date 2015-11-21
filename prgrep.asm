@@ -29,17 +29,17 @@ global main
     syscall
 %endmacro
 %macro exit 0
-    mov rax,60
-    mov rdi,0
+    mov rax,60 ;sys_exit
+    mov rdi,0 ;return 0
     syscall
 %endmacro
 %macro return 1
-    mov rax,60
-    mov rdi,%1
+    mov rax,60 ;sys_exit
+    mov rdi,%1 ;return %1
     syscall
 %endmacro
 %macro println 0
-    mov rdi,nl
+    mov rdi,nl ;puts(nl)
     call puts
 %endmacro
 %macro bytesof 1 ;That's one of the prettiest things that I've ever done
@@ -50,8 +50,8 @@ global main
     mov rax,[stat + STAT.st_size] ; get st_size
 %endmacro
 %macro openfile 1
-    mov rax,2
-    mov rdi,%1
+    mov rax,2 ; sys_open
+    mov rdi,%1 ; char* filename
     mov rsi,0 ;READONLY/RDONLY
     mov rdx,0 ;If a file if created is RO
     syscall
@@ -160,7 +160,7 @@ section .text
 
     ;=========PUTS========
     ;Funcionamiento
-    ;rax:int(of syscall) strlen(rdi:char*)
+    ;rax:int(of syscall) puts(rdi:char*)
     puts:
         push rbp
         push r15
@@ -176,15 +176,17 @@ section .text
         pop r15
         pop rbp
         ret
+    ;rax_int(of syscall) putsline(char*)
+    ;use to print name of file and 10 characters more;
     putsline:
         push rbp
         push r15
         mov rbp,rdi ; Parametro 1 Char*
         ;mov rdi,rbp
-        movq rdi,xmm10
-        call strlen
-        add rax,10
-        mov r15,rax ; Parametro 2 Length
+        movq rdi,xmm10 ; in xmm10 is store the pattern
+        call strlen ; length of pattern
+        add rax,10 ; add 10 to 10 characters more
+        mov r15,rax ; Parametro 2 Length Backup
         mov rax,1 ;sys_write
         mov rdi,1 ; stdout
         mov rsi,rbp ; Char *buf
@@ -198,7 +200,7 @@ section .text
     printline:; Function begin
             push    rbp ;backup
             push    r12 ;backup
-            movq    xmm12,rcx                                    
+            movq    xmm12,rcx  ;line where was found the pattern                                  
             mov     rbp, rsp 
             mov     r12,rdi ;Line number at 
             mov     rdi,found_in ;fount string
@@ -207,11 +209,11 @@ section .text
             call    puts ;print
             mov     rdi,line_at ; string ": "
             call    puts ;print
-            movq    rsi,xmm12
-            mov     rdi,buffer
-            add     rdi,rsi
-            call    putsline
-            mov     rdi,nl
+            movq    rsi,xmm12 ;line where was found
+            mov     rdi,buffer ; buffer
+            add     rdi,rsi ; start at the line where was found
+            call    putsline ;print fron that line and size(pattern)+10 more
+            mov     rdi,nl ;newline
             call    puts
             pop     r12    ;restore backup                              
             pop     rbp    ;restore backup                                 
@@ -284,20 +286,20 @@ section .text
     tolowercase:; Function begin
             push    rbp                                     
             mov     rbp, rsp                                
-            mov     qword [rbp-18H], rdi                    
+            mov     qword [rbp-18H], rdi  ;char* text                  
             mov     qword [rbp-8H], 0                       
             jmp     tolowercase_003                                   
     tolowercase_001:  mov     rdx, qword [rbp-8H]   
             mov     rax, qword [rbp-18H]                    
             add     rax, rdx                                
             movzx   eax, byte [rax]                         
-            cmp     al, 64                                  
+            cmp     al, 64        ;0x40 from 'A'                          
             jle     tolowercase_002                                   
             mov     rdx, qword [rbp-8H]                     
             mov     rax, qword [rbp-18H]                    
             add     rax, rdx                                
             movzx   eax, byte [rax]                         
-            cmp     al, 90                                  
+            cmp     al, 90       ;0x5B to 'Z'                           
             jg      tolowercase_002                    
             mov     rdx, qword [rbp-8H]                     
             mov     rax, qword [rbp-18H]                    
@@ -306,7 +308,7 @@ section .text
             mov     rdx, qword [rbp-18H]                    
             add     rdx, rcx                                
             movzx   edx, byte [rdx]                         
-            add     edx, 32                                 
+            add     edx, 32     ;0x20 this conver a char form UPPER to lower                             
             mov     byte [rax], dl                          
     tolowercase_002:  add     qword [rbp-8H], 1                       
     tolowercase_003:  mov     rdx, qword [rbp-8H]                     
@@ -335,8 +337,8 @@ section .text
             lea     rdx, [rax*8]                            
             mov     rax, qword [rbp-28H]                    
             add     rax, rdx                                
-            mov     qword [rax], -1                         
-            add     qword [rbp-8H], 1                       
+            mov     qword [rax], -1   ;initializa each char of char[256] in -1                      
+            add     qword [rbp-8H], 1 ;i++                      
     badCharHeuristic_006:  mov     rax, qword [rel NO_OF_CHARS]            
             cmp     qword [rbp-8H], rax                     
             jl      badCharHeuristic_005                                   
@@ -352,8 +354,8 @@ section .text
             mov     rax, qword [rbp-28H]                    
             add     rdx, rax                                
             mov     rax, qword [rbp-8H]                     
-            mov     qword [rdx], rax                        
-            add     qword [rbp-8H], 1                       
+            mov     qword [rdx], rax      ;badchar[str[i]]=i                  
+            add     qword [rbp-8H], 1     ; i++                  
     badCharHeuristic_008:  mov     rax, qword [rbp-8H]                     
             cmp     rax, qword [rbp-20H]                    
             jl      badCharHeuristic_007                                   
@@ -397,13 +399,13 @@ section .text
             shl     rax, 3     ;shift logical left unsigned                            
             lea     rdx, [rax+7H]                           
             mov     eax, 16                                 
-            sub     rax, 1                                  
+            sub     rax, 1  ;j = m-1                                
             add     rax, rdx                                
             mov     esi, 16                                 
             mov     edx, 0                                  
             div     rsi                                     
             imul    rax, rax, 16                            
-            sub     rsp, rax                                
+            sub     rsp, rax   ;                             
             mov     rax, rsp                                
             add     rax, 7                                  
             shr     rax, 3     ;shift logical right unsigned                         
