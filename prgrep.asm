@@ -552,9 +552,44 @@ section .text
             je end
             jmp loop_regexp
         fileparam_section:
-            mov rdi,fileparam
-            call puts
-            jmp end
+            mov r15,3; pattern in 3rd position
+            movq xmm8,[r12+16]
+            openfile [r12+16]
+            movq xmm0,rax
+            cmp rax,0
+            jl loop_fileparam ; Review others
+            bytesof [r12+16]
+            movq xmm1,rax
+            mov rsi,buffer
+            movq rdi,xmm0
+            movq rdx,xmm1
+            mov rax,0 ;sys_read
+            syscall
+            mov rdi,buffer
+            mov rsi,[r12+r15*8]
+            call search
+            mov r14,4 ;Others files starts at 32
+            loop_fileparam:
+            movq xmm8,[r12+r14*8]; base + (4*8) + 8*r14
+            openfile [r12+r14*8]
+            movq xmm0,rax
+            cmp rax,0
+            jl end
+            bytesof [r12+r14*8]
+            movq xmm1,rax
+            mov rsi,buffer
+            movq rdi,xmm0
+            movq rdx,xmm1
+            mov rax,0 ;sys_read
+            syscall
+            mov rdi,buffer
+            mov rsi,[r12+r15*8]
+            call search
+            inc r14
+            mov rdi,r14
+            cmp rdi,r13
+            je end
+            jmp loop_fileparam
         ignorecase_section:
             mov r15,2 ;pattern in 2nd place
             loop_ignorecase:
