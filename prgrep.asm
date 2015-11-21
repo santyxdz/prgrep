@@ -176,12 +176,29 @@ section .text
         pop r15
         pop rbp
         ret
-
+    putsline:
+        push rbp
+        push r15
+        mov rbp,rdi ; Parametro 1 Char*
+        ;mov rdi,rbp
+        movq rdi,xmm10
+        call strlen
+        add rax,10
+        mov r15,rax ; Parametro 2 Length
+        mov rax,1 ;sys_write
+        mov rdi,1 ; stdout
+        mov rsi,rbp ; Char *buf
+        mov rdx,r15 ; length
+        syscall
+        pop r15
+        pop rbp
+        ret
     ;============PRINTLINE==========
     ; printline(rdi:int)
     printline:; Function begin
             push    rbp ;backup
-            push    r12 ;backup                                    
+            push    r12 ;backup
+            movq    xmm12,rcx                                    
             mov     rbp, rsp 
             mov     r12,rdi ;Line number at 
             mov     rdi,found_in ;fount string
@@ -190,8 +207,12 @@ section .text
             call    puts ;print
             mov     rdi,line_at ; string ": "
             call    puts ;print
-            mov     rdi,nl   ;string new line                           
-            call    puts ;print
+            movq    rsi,xmm12
+            mov     rdi,buffer
+            add     rdi,rsi
+            call    putsline
+            mov     rdi,nl
+            call    puts
             pop     r12    ;restore backup                              
             pop     rbp    ;restore backup                                 
             ret                                             
@@ -544,7 +565,8 @@ section .text
             mov rax,0 ;sys_read
             syscall
             mov rdi,buffer
-            mov rsi,[r12+r15*8]
+            mov rsi,[r12+r15*8] ;Patron
+            movq xmm10,[r12+r15*8]
             call search
             inc r14
             mov rdi,r14
@@ -567,6 +589,7 @@ section .text
             syscall
             mov rdi,buffer
             mov rsi,[r12+r15*8]
+            movq xmm10,[r12+r15*8]
             call search
             mov r14,4 ;Others files starts at 32
             loop_fileparam:
@@ -584,6 +607,7 @@ section .text
             syscall
             mov rdi,buffer
             mov rsi,[r12+r15*8]
+            movq xmm10,[r12+r15*8]
             call search
             inc r14
             mov rdi,r14
@@ -611,6 +635,7 @@ section .text
             call tolowercase
             mov rdi,buffer
             mov rsi,[r12+r15*8]
+            movq xmm10,[r12+r15*8]
             call search
             inc r14
             mov rdi,r14
@@ -632,6 +657,7 @@ section .text
             syscall
             mov rdi,buffer
             mov rsi,[r12+r15*8]
+            movq xmm10,[r12+r15*8]
             call search
             inc r14
             mov rdi,r14
@@ -667,7 +693,7 @@ section .data ;variables inicializadas
     hellofile db "./hello.txt"
 section .rodata
     found db "found",0xA,0x0
-    found_in db "found in ",0x0
+    found_in db "->found in ",0x0
     line_at db ": ",0x0
     NO_OF_CHARS dq 256 ;nums of chars in ascii standard
     not_found db "No hay nada para buscar",0xA,0x0;10,13 | o12,o15 means \n\r
